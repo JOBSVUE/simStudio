@@ -1,0 +1,113 @@
+services:
+  simstudio:
+    image: 'ghcr.io/simstudioai/simstudio:latest'
+    restart: unless-stopped
+    ports:
+      - '3401:3000'
+    labels:
+      - coolify.managed=true
+      - coolify.type=application
+    deploy:
+      resources:
+        limits:
+          memory: 8G
+    environment:
+      - 'DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@simstudiodb:5432/${POSTGRES_DB:-simstudio}'
+      - 'BETTER_AUTH_URL=${SERVICE_URL_SIMSTUDIO}'
+      - 'NEXT_PUBLIC_APP_URL=${SERVICE_URL_SIMSTUDIO}'
+      - 'BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET}'
+      - 'ENCRYPTION_KEY=${ENCRYPTION_KEY}'
+      - 'GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}'
+      - 'GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}'
+      - 'GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID}'
+      - 'GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET}'
+      - 'RESEND_API_KEY=${RESEND_API_KEY}'
+      - 'COPILOT_API_KEY=${COPILOT_API_KEY}'
+      - 'OPENROUTER_API_KEY=${OPENROUTER_API_KEY}'
+      - 'GROQ_API_KEY=${GROQ_API_KEY}'
+      - 'OPENAI_API_KEY=${OPENAI_API_KEY}'
+      - 'OLLAMA_URL=${OLLAMA_URL}'
+      - 'SOCKET_SERVER_URL=${SERVICE_URL_REALTIME}'
+      - 'NEXT_PUBLIC_SOCKET_URL=${SERVICE_URL_REALTIME}'
+      - 'DISABLE_REGISTRATION=${DISABLE_REGISTRATION:-false}'
+    depends_on:
+      simstudiodb:
+        condition: service_healthy
+      simstudiomigrations:
+        condition: service_completed_successfully
+      simstudiorealtime:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - wget
+        - '--spider'
+        - '--quiet'
+        - 'http://127.0.0.1:3000'
+      interval: 90s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+  simstudiorealtime:
+    image: 'ghcr.io/simstudioai/realtime:latest'
+    restart: unless-stopped
+    ports:
+      - '3403:3002'
+    labels:
+      - coolify.managed=true
+      - coolify.type=service
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+    environment:
+      - 'DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@simstudiodb:5432/${POSTGRES_DB:-simstudio}'
+      - 'NEXT_PUBLIC_APP_URL=${SERVICE_URL_SIMSTUDIO}'
+      - 'BETTER_AUTH_URL=${SERVICE_URL_SIMSTUDIO}'
+      - 'BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET}'
+    depends_on:
+      simstudiodb:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - wget
+        - '--spider'
+        - '--quiet'
+        - 'http://127.0.0.1:3002/health'
+      interval: 90s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+  simstudiomigrations:
+    image: 'ghcr.io/simstudioai/migrations:latest'
+    environment:
+      - 'DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@simstudiodb:5432/${POSTGRES_DB:-simstudio}'
+    depends_on:
+      simstudiodb:
+        condition: service_healthy
+    command:
+      - bun
+      - run
+      - 'db:migrate'
+    restart: 'no'
+  simstudiodb:
+    image: 'pgvector/pgvector:pg17'
+    restart: unless-stopped
+    ports:
+      - '5495:5432'
+    environment:
+      - 'POSTGRES_USER=${POSTGRES_USER:-postgres}'
+      - 'POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}'
+      - 'POSTGRES_DB=${POSTGRES_DB:-simstudio}'
+    volumes:
+      - 'simstudio_postgres_data:/var/lib/postgresql/data'
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - 'pg_isready -U postgres'
+      interval: 5s
+      timeout: 5s
+      retries: 5
+volumes:
+  simstudio_postgres_data: null

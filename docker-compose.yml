@@ -3,7 +3,7 @@ services:
     image: 'ghcr.io/simstudioai/simstudio:latest'
     restart: unless-stopped
     ports:
-      - '3401:3000'
+      - '3701:3000'
     environment:
       - 'DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@simstudiodb:5432/${POSTGRES_DB:-simstudio}'
       - 'BETTER_AUTH_URL=${SERVICE_URL_SIMSTUDIO}'
@@ -45,7 +45,7 @@ services:
     image: 'ghcr.io/simstudioai/realtime:latest'
     restart: unless-stopped
     ports:
-      - '3403:3002'
+      - '3703:3002'
     environment:
       - 'DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@simstudiodb:5432/${POSTGRES_DB:-simstudio}'
       - 'NEXT_PUBLIC_APP_URL=${SERVICE_URL_SIMSTUDIO}'
